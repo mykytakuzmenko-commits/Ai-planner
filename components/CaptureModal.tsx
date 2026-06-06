@@ -195,7 +195,7 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
           deadlineDate: t.deadline_date,
           deadlineTime: t.deadline_time,
           ambiguous: t.ambiguous,
-          status: "inbox" as const,
+          status: (t.deadline_date === current_date ? "today" : "inbox") as "today" | "inbox",
           completedAt: null,
         }))
       );
