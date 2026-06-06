@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import TaskCard from "@/components/TaskCard";
 import CaptureModal from "@/components/CaptureModal";
 import UndoToast from "@/components/UndoToast";
+import TimelineView from "@/components/TimelineView";
 import {
   getTodayTasks,
   getInboxCount,
@@ -37,7 +37,8 @@ export default function TodayPage() {
   }, [refresh]);
 
   const handleTasksCreated = (newTasks: Task[]) => {
-    setInboxCount((c) => c + newTasks.length);
+    setInboxCount((c) => c + newTasks.filter((t) => t.status === "inbox").length);
+    refresh();
   };
 
   const handleComplete = (id: string, completed: boolean) => {
@@ -47,7 +48,7 @@ export default function TodayPage() {
 
   const handleRemove = (id: string) => {
     updateTask(id, { status: "inbox" });
-    setUndoItem({ taskId: id, message: "Task removed from Today" });
+    setUndoItem({ taskId: id, message: "Задачу переміщено у вхідні" });
     refresh();
   };
 
@@ -58,20 +59,13 @@ export default function TodayPage() {
     refresh();
   };
 
-  const today = new Date().toLocaleDateString("uk-UA", {
-    weekday: "long",
+  const todayShort = new Date().toLocaleDateString("uk-UA", {
     month: "long",
     day: "numeric",
   });
-  const todayShort = new Date().toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
 
-  const activeTasks = tasks.filter((t) => t.status === "today");
-  const completedTasks = tasks.filter((t) => t.status === "completed");
   const total = tasks.length;
-  const done = completedTasks.length;
+  const done = tasks.filter((t) => t.status === "completed").length;
 
   if (!mounted) return null;
 
@@ -81,11 +75,10 @@ export default function TodayPage() {
       <header className="px-5 pt-12 pb-4">
         <div className="flex items-start justify-between">
           <div>
-            {/* Date chip */}
-            <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/70 text-xs font-semibold text-slate-500 shadow-sm backdrop-blur-sm mb-2">
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/70 text-xs font-semibold text-slate-500 shadow-sm backdrop-blur-sm mb-2 capitalize">
               {todayShort}
             </span>
-            <h1 className="text-[28px] font-bold text-slate-800 leading-tight capitalize">
+            <h1 className="text-[28px] font-bold text-slate-800 leading-tight">
               Сьогодні
             </h1>
           </div>
@@ -93,7 +86,7 @@ export default function TodayPage() {
           {inboxCount > 0 && (
             <Link
               href="/inbox"
-              className="flex items-center gap-1.5 bg-indigo-500 text-white px-3.5 py-2 rounded-full text-sm font-semibold shadow-sm hover:bg-indigo-600 transition-colors"
+              className="flex items-center gap-1.5 bg-indigo-500 text-white px-3.5 py-2 rounded-full text-sm font-semibold shadow-sm hover:bg-indigo-600 transition-colors mt-1"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -120,8 +113,8 @@ export default function TodayPage() {
       </header>
 
       {/* Content */}
-      <main className="flex-1 px-5 pb-36">
-        {tasks.length === 0 && (
+      <main className="flex-1 px-4 pb-36">
+        {tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
             <div className="w-24 h-24 rounded-full bg-white/70 shadow-sm flex items-center justify-center">
               <svg className="w-11 h-11 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,44 +123,18 @@ export default function TodayPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-800">День вільний</h2>
-              <p className="text-slate-400 text-sm mt-1.5 leading-relaxed">Злий все з голови — AI розбере і впорядкує.</p>
+              <p className="text-slate-400 text-sm mt-1.5 leading-relaxed">
+                Злий все з голови — AI розбере і впорядкує.
+              </p>
             </div>
           </div>
-        )}
-
-        {tasks.length > 0 && (
-          <div className="flex flex-col gap-3 mt-4">
-            {activeTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                context="today"
-                onComplete={handleComplete}
-                onRemove={handleRemove}
-              />
-            ))}
-
-            {completedTasks.length > 0 && (
-              <>
-                {activeTasks.length > 0 && (
-                  <div className="flex items-center gap-3 my-2">
-                    <div className="flex-1 h-px bg-white/50" />
-                    <span className="text-xs font-semibold text-slate-400">Виконано</span>
-                    <div className="flex-1 h-px bg-white/50" />
-                  </div>
-                )}
-                {completedTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    context="today"
-                    onComplete={handleComplete}
-                    onRemove={handleRemove}
-                  />
-                ))}
-              </>
-            )}
-          </div>
+        ) : (
+          <TimelineView
+            tasks={tasks}
+            onTasksChange={refresh}
+            onComplete={handleComplete}
+            onRemove={handleRemove}
+          />
         )}
       </main>
 
