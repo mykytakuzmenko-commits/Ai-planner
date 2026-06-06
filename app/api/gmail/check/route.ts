@@ -109,9 +109,11 @@ export async function POST(request: NextRequest) {
   const currentDate = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
 
   try {
-    // Fetch unread emails from inbox, last 2 days
+    // Fetch only today's unread emails from inbox
+    const todayDate = new Date().toLocaleDateString("en-CA", { timeZone: timezone }); // YYYY-MM-DD
+    const afterDate = todayDate.replace(/-/g, "/"); // Gmail format: YYYY/MM/DD
     const listRes = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=is:unread in:inbox newer_than:2d&maxResults=15`,
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=is:unread in:inbox after:${afterDate}&maxResults=20`,
       { headers: { Authorization: `Bearer ${access_token}` } }
     );
 
