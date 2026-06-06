@@ -119,7 +119,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "token_expired" }, { status: 401 });
     }
     if (!listRes.ok) {
-      return NextResponse.json({ error: "Gmail API error" }, { status: 502 });
+      const errBody = await listRes.json().catch(() => ({}));
+      console.error("Gmail list error:", listRes.status, errBody);
+      const msg = errBody?.error?.message || errBody?.error || "Gmail API error";
+      return NextResponse.json({ error: `Gmail: ${msg}` }, { status: 502 });
     }
 
     const listData = await listRes.json();
