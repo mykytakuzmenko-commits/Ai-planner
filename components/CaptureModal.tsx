@@ -95,7 +95,7 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || "Parsing failed");
+      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
 
       const parsed = data.tasks as Array<{
         title: string;

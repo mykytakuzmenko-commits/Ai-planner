@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("ANTHROPIC_API_KEY is not set");
+    return NextResponse.json({ error: "API key not configured" }, { status: 500 });
+  }
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
   const { raw_text, timezone = "UTC", current_date } = body;
 
   if (!raw_text || typeof raw_text !== "string" || !raw_text.trim()) {
@@ -19,61 +28,57 @@ export async function POST(request: NextRequest) {
 
   const today = current_date || new Date().toLocaleDateString("en-CA");
 
-  const prompt = `You are a task extractor. Convert this brain-dump into structured tasks as JSON.
+  const prompt = `Extract tasks from this brain-dump and return ONLY a JSON object — no markdown, no explanation.
 
-Current date: ${today}
-Timezone: ${timezone}
+Current date: ${today} (timezone: ${timezone})
 
 Rules:
-- Split into atomic single-action tasks
-- title: short imperative ("Message Anna", "Finish the deck")
-- priority "must": urgent signals ("need to", "must", "don't forget") or has a specific time/deadline
-- priority "nice": optional ("maybe", "later", "if I have time")
-- estimated_duration_minutes: always estimate (message=5, email=10, call=20, meeting=60, gym=60, focused work=30-90)
-- deadline_date/deadline_time: only when explicitly stated, else null. Resolve "today"→${today}, "15:00"→"15:00"
+- Split into atomic single-action tasks (one verb/outcome each)
+- title: short imperative phrase
+- priority "must": urgent/committed ("need to", "must", "don't forget", has time/deadline)
+- priority "nice": optional ("maybe", "later", "would be nice")
+- estimated_duration_minutes: always a number (message=5, call=20, meeting=60, gym=60, focused work=45)
+- deadline_date: YYYY-MM-DD or null. "today" = ${today}
+- deadline_time: HH:mm (24h) or null
 - ambiguous: true if too vague to act on
-- Return ONLY valid JSON, no markdown, no explanation.
 
-Input: "${raw_text.trim()}"
+Brain-dump:
+"""
+${raw_text.trim()}
+"""
 
-Return this exact JSON format:
-{
-  "tasks": [
-    {
-      "title": "string",
-      "priority": "must" | "nice",
-      "estimated_duration_minutes": number,
-      "deadline_date": "YYYY-MM-DD" | null,
-      "deadline_time": "HH:mm" | null,
-      "ambiguous": boolean
-    }
-  ]
-}`;
+Respond with ONLY this JSON (no other text):
+{"tasks":[{"title":"...","priority":"must","estimated_duration_minutes":10,"deadline_date":null,"deadline_time":null,"ambiguous":false}]}`;
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5",
+      model: "claude-3-5-haiku-20241022",
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     });
 
-    const text = response.content
+    const raw = response.content
       .filter((b) => b.type === "text")
       .map((b) => (b as { type: "text"; text: string }).text)
-      .join("");
+      .join("")
+      .trim();
 
-    // Extract JSON from response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    console.log("Claude raw response:", raw);
+
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error("No JSON found in response:", raw);
       return NextResponse.json({ tasks: [] });
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    return NextResponse.json({ tasks: parsed.tasks || [] });
-  } catch (err) {
-    console.error("Parse error:", err);
+    const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
+    return NextResponse.json({ tasks });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Anthropic API error:", msg);
     return NextResponse.json(
-      { error: "AI parsing failed. Please try again." },
+      { error: `AI parsing failed: ${msg}` },
       { status: 502 }
     );
   }
