@@ -10,6 +10,9 @@ export interface Task {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  source?: "mail";
+  sourceEmailId?: string;
+  sourceEmailSubject?: string;
 }
 
 const STORAGE_KEY = "ai_planner_tasks";

@@ -5,14 +5,21 @@ import Link from "next/link";
 import CaptureModal from "@/components/CaptureModal";
 import UndoToast from "@/components/UndoToast";
 import TimelineView from "@/components/TimelineView";
+import GmailConnect from "@/components/GmailConnect";
 import {
   getTodayTasks,
   getInboxCount,
   completeTask,
   addToToday,
   updateTask,
+  addTasks,
   type Task,
 } from "@/lib/storage";
+import {
+  getGmailAuth,
+  isTokenExpired,
+  markEmailsProcessed,
+} from "@/lib/gmail-client";
 
 interface UndoItem {
   taskId: string;
@@ -25,16 +32,68 @@ export default function TodayPage() {
   const [showCapture, setShowCapture] = useState(false);
   const [undoItem, setUndoItem] = useState<UndoItem | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [mailToast, setMailToast] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     setTasks(getTodayTasks());
     setInboxCount(getInboxCount());
   }, []);
 
+  // Check Gmail for new email tasks
+  const checkGmail = useCallback(async () => {
+    const auth = getGmailAuth();
+    if (!auth || isTokenExpired(auth)) return;
+
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const res = await fetch("/api/gmail/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          access_token: auth.accessToken,
+          processed_ids: auth.processedIds,
+          timezone,
+        }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (data.tasks && data.tasks.length > 0) {
+        const current_date = new Date().toLocaleDateString("en-CA");
+        addTasks(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          data.tasks.map((t: any) => ({
+            title: t.title,
+            priority: t.priority || "nice",
+            estimatedDurationMinutes: t.estimated_duration_minutes || 15,
+            deadlineDate: t.deadline_date || null,
+            deadlineTime: t.deadline_time || null,
+            ambiguous: false,
+            status: (t.deadline_date === current_date ? "today" : "inbox") as "today" | "inbox",
+            completedAt: null,
+            source: "mail" as const,
+            sourceEmailId: t.sourceEmailId,
+            sourceEmailSubject: t.sourceEmailSubject,
+          }))
+        );
+        markEmailsProcessed(data.processed_ids || []);
+        setMailToast(`📧 ${data.tasks.length} задач з пошти додано до вхідних`);
+        refresh();
+      } else if (data.processed_ids?.length > 0) {
+        markEmailsProcessed(data.processed_ids);
+      }
+    } catch {
+      // Silently fail — Gmail check is background task
+    }
+  }, [refresh]);
+
   useEffect(() => {
     setMounted(true);
     refresh();
-  }, [refresh]);
+    // Check Gmail once on app open (with small delay)
+    const t = setTimeout(checkGmail, 2000);
+    return () => clearTimeout(t);
+  }, [refresh, checkGmail]);
 
   const handleTasksCreated = (newTasks: Task[]) => {
     setInboxCount((c) => c + newTasks.filter((t) => t.status === "inbox").length);
@@ -83,17 +142,20 @@ export default function TodayPage() {
             </h1>
           </div>
 
-          {inboxCount > 0 && (
-            <Link
-              href="/inbox"
-              className="flex items-center gap-1.5 bg-indigo-500 text-white px-3.5 py-2 rounded-full text-sm font-semibold shadow-sm hover:bg-indigo-600 transition-colors mt-1"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
-              {inboxCount}
-            </Link>
-          )}
+          <div className="flex items-center gap-2 mt-1">
+            <GmailConnect />
+            {inboxCount > 0 && (
+              <Link
+                href="/inbox"
+                className="flex items-center gap-1.5 bg-indigo-500 text-white px-3.5 py-2 rounded-full text-sm font-semibold shadow-sm hover:bg-indigo-600 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                </svg>
+                {inboxCount}
+              </Link>
+            )}
+          </div>
         </div>
 
         {total > 0 && (
@@ -165,6 +227,16 @@ export default function TodayPage() {
           onDismiss={() => setUndoItem(null)}
         />
       )}
+
+      {/* Mail notification toast */}
+      {mailToast && (
+        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+          <div className="bg-slate-800 text-white rounded-2xl px-4 py-3 text-sm shadow-xl max-w-xs text-center">
+            {mailToast}
+          </div>
+        </div>
+      )}
+      {mailToast && setTimeout(() => setMailToast(null), 4000) as unknown as null}
     </div>
   );
 }

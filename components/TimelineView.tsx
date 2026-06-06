@@ -100,6 +100,14 @@ function MiniCard({
               {task.deadlineTime}
             </span>
           )}
+          {task.source === "mail" && (
+            <span className="flex items-center gap-0.5 text-[10px] font-semibold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded-full">
+              <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+              </svg>
+              Mail
+            </span>
+          )}
         </div>
       </div>
 
