@@ -54,13 +54,13 @@ export default function GmailConnect({ onTasksFound }: GmailConnectProps) {
       const data = await res.json();
 
       if (res.status === 401) {
-        setLastResult("❌ Токен застарів — перепідключи Gmail");
+        setLastResult("❌ Токен застарів — відключи і підключи знову");
         setChecking(false);
         return;
       }
 
       if (!res.ok) {
-        setLastResult("❌ Помилка Gmail API");
+        setLastResult(`❌ ${data.error || "Помилка Gmail API"}`);
         setChecking(false);
         return;
       }
