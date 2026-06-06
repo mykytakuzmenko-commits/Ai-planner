@@ -15,10 +15,10 @@ interface TaskCardProps {
 }
 
 function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 60) return `${minutes}м`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  return m > 0 ? `${h}г ${m}м` : `${h}г`;
 }
 
 export default function TaskCard({
@@ -41,11 +41,12 @@ export default function TaskCard({
 
   return (
     <div
-      className={`rounded-2xl border p-4 transition-all duration-200 animate-fade-in ${
+      className={`rounded-3xl p-4 transition-all duration-200 animate-fade-in ${
         isCompleted
-          ? "bg-slate-50 border-slate-100 opacity-60"
-          : "bg-white border-slate-200 shadow-sm"
+          ? "bg-white/50 opacity-60 shadow-none"
+          : "bg-white shadow-sm shadow-slate-200/80"
       }`}
+      style={{ boxShadow: isCompleted ? "none" : "0 2px 12px rgba(99,102,241,0.07), 0 1px 3px rgba(0,0,0,0.06)" }}
     >
       <div className="flex items-start gap-3">
         {/* Checkbox — Today only */}
@@ -72,29 +73,37 @@ export default function TaskCard({
             {task.title}
           </p>
 
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              task.priority === "must" ? "bg-red-50 text-red-600" : "bg-violet-50 text-violet-600"
+          <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+            {/* Priority badge */}
+            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
+              task.priority === "must"
+                ? "bg-red-50 text-red-600"
+                : "bg-violet-50 text-violet-600"
             }`}>
               {task.priority === "must" ? "Must" : "Nice"}
             </span>
 
-            <span className="text-xs text-slate-400 flex items-center gap-1">
+            {/* Duration chip */}
+            <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-full">
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               {formatDuration(task.estimatedDurationMinutes)}
             </span>
 
+            {/* Deadline time */}
             {task.deadlineTime && (
-              <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                🕐 {task.deadlineTime}
+              <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-full">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {task.deadlineTime}
               </span>
             )}
 
             {context === "inbox" && task.ambiguous && (
-              <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                ⚠ Unclear
+              <span className="text-[11px] text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full font-semibold">
+                ⚠ Не зрозуміло
               </span>
             )}
           </div>
@@ -103,18 +112,18 @@ export default function TaskCard({
 
       {/* Inbox actions */}
       {context === "inbox" && (
-        <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+        <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100/80">
           <button
             onClick={() => act(() => onAddToToday?.(task.id))}
             disabled={isActing}
-            className="flex-1 py-2.5 bg-indigo-500 text-white text-sm font-semibold rounded-xl hover:bg-indigo-600 active:scale-95 transition-all touch-manipulation disabled:opacity-50"
+            className="flex-1 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-sm font-bold rounded-full hover:from-indigo-600 hover:to-violet-600 active:scale-95 transition-all touch-manipulation disabled:opacity-50 shadow-sm shadow-indigo-200/60"
           >
-            Add to Today
+            Додати на сьогодні
           </button>
           <button
             onClick={() => act(() => onDelete?.(task.id))}
             disabled={isActing}
-            className="px-4 py-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all touch-manipulation"
+            className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all touch-manipulation"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -130,7 +139,7 @@ export default function TaskCard({
             onClick={() => act(() => onRemove?.(task.id))}
             className="text-xs text-slate-300 hover:text-slate-400 transition-colors touch-manipulation"
           >
-            Remove
+            Видалити
           </button>
         </div>
       )}

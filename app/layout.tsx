@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-white">
+      <body className="min-h-screen">
         <div className="max-w-lg mx-auto min-h-screen relative">
           {children}
         </div>

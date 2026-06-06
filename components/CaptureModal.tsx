@@ -228,15 +228,18 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
       `}</style>
 
       <div
-        className="fixed inset-0 z-50 flex flex-col bg-white"
-        style={{ animation: "slideUp 0.28s cubic-bezier(0.16,1,0.3,1) both" }}
+        className="fixed inset-0 z-50 flex flex-col"
+        style={{
+          animation: "slideUp 0.28s cubic-bezier(0.16,1,0.3,1) both",
+          background: "linear-gradient(160deg, #ede9fe 0%, #fdf4ff 40%, #fff7ed 100%)",
+        }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-12 pb-4 border-b border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800">Brain dump</h2>
+        <div className="flex items-center justify-between px-5 pt-12 pb-4">
+          <h2 className="text-[22px] font-bold text-slate-800">Brain dump</h2>
           <button
             onClick={onClose}
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/70 shadow-sm hover:bg-white transition-colors"
           >
             <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -247,22 +250,26 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
         {/* Parsing */}
         {isParsing && (
           <div className="flex-1 flex flex-col items-center justify-center gap-5 px-8">
-            <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center">
-              <svg style={{ animation: "spin 1s linear infinite" }} className="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-20 h-20 rounded-full bg-white/70 shadow-sm flex items-center justify-center">
+              <svg style={{ animation: "spin 1s linear infinite" }} className="w-9 h-9 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </div>
             <div className="text-center">
-              <p className="text-slate-800 font-semibold text-lg">AI розбирає твої задачі…</p>
-              <p className="text-slate-400 text-sm mt-1">Зазвичай кілька секунд</p>
+              <p className="text-slate-800 font-bold text-xl">AI розбирає твої задачі…</p>
+              <p className="text-slate-400 text-sm mt-1.5">Зазвичай кілька секунд</p>
             </div>
           </div>
         )}
 
         {/* Input */}
         {!isParsing && (
-          <div className="flex-1 flex flex-col px-5 pt-4 pb-2 gap-3 overflow-hidden">
-            <div className="flex-1 relative overflow-hidden">
+          <div className="flex-1 flex flex-col px-5 pt-2 pb-2 gap-3 overflow-hidden">
+            {/* Textarea card */}
+            <div
+              className="flex-1 relative overflow-hidden rounded-3xl bg-white shadow-sm"
+              style={{ boxShadow: "0 2px 12px rgba(99,102,241,0.07), 0 1px 3px rgba(0,0,0,0.06)" }}
+            >
               <textarea
                 ref={textareaRef}
                 value={displayText}
@@ -275,29 +282,29 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
                 }}
                 readOnly={isRecording}
                 placeholder="Написати Ані, закінчити презентацію, зал о 18:00, дзвінок о 15:00, може прочитати статтю пізніше…"
-                className="w-full h-full resize-none text-[16px] leading-relaxed focus:outline-none"
+                className="w-full h-full resize-none text-[16px] leading-relaxed focus:outline-none p-5"
                 style={{ color: isRecording && interimText ? "#94a3b8" : "#1e293b" }}
               />
             </div>
 
             {displayText.length > SOFT_LIMIT && (
-              <p className={`text-xs text-right ${displayText.length > HARD_LIMIT * 0.9 ? "text-red-400" : "text-amber-400"}`}>
+              <p className={`text-xs text-right px-1 ${displayText.length > HARD_LIMIT * 0.9 ? "text-red-400" : "text-amber-400"}`}>
                 {displayText.length} / {HARD_LIMIT}
               </p>
             )}
 
             {/* Recording hint */}
             {isRecording && (
-              <div className="flex items-center gap-2 bg-red-50 rounded-2xl px-4 py-2.5">
+              <div className="flex items-center gap-2 bg-red-50 rounded-full px-4 py-2.5 shadow-sm">
                 <div className="w-2 h-2 rounded-full bg-red-500" style={{ animation: "micPulse 1.4s ease-out infinite" }} />
-                <span className="text-sm text-red-600 font-medium">
+                <span className="text-sm text-red-600 font-semibold">
                   Говори — {LANGS.find(l => l.code === lang)?.flag} розпізнаю…
                 </span>
               </div>
             )}
 
             {state === "error" && error && (
-              <div className="bg-red-50 rounded-2xl px-4 py-3">
+              <div className="bg-red-50 rounded-2xl px-4 py-3 shadow-sm">
                 <p className="text-sm text-red-600">{error}</p>
               </div>
             )}
@@ -306,7 +313,7 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
 
         {/* Bottom bar */}
         {!isParsing && (
-          <div className="px-5 pb-10 pt-3 border-t border-slate-100 flex flex-col gap-3">
+          <div className="px-5 pb-10 pt-3 flex flex-col gap-3">
 
             {/* Language selector */}
             <div className="flex gap-2">
@@ -315,10 +322,10 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
                   key={l.code}
                   onClick={() => { if (!isRecording) setLang(l.code); }}
                   disabled={isRecording}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all ${
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-bold transition-all shadow-sm ${
                     lang === l.code
-                      ? "bg-indigo-500 text-white"
-                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      ? "bg-indigo-500 text-white shadow-indigo-200/60"
+                      : "bg-white/70 text-slate-500 hover:bg-white"
                   } ${isRecording ? "opacity-40 cursor-default" : ""}`}
                 >
                   <span>{l.flag}</span>
@@ -333,8 +340,8 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
                 <button
                   onClick={handleMicClick}
                   style={isRecording ? { background: "#ef4444", animation: "micPulse 1.4s ease-out infinite" } : {}}
-                  className={`w-14 h-14 rounded-full flex flex-col items-center justify-center gap-1 transition-all flex-shrink-0 ${
-                    isRecording ? "text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95"
+                  className={`w-14 h-14 rounded-full flex flex-col items-center justify-center gap-1 transition-all flex-shrink-0 shadow-sm ${
+                    isRecording ? "text-white" : "bg-white/80 text-slate-500 hover:bg-white active:scale-95"
                   }`}
                 >
                   {isRecording ? (
@@ -349,7 +356,7 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
                   )}
                 </button>
               ) : (
-                <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0" title="Голосовий ввід не підтримується">
+                <div className="w-14 h-14 rounded-full bg-white/50 shadow-sm flex items-center justify-center flex-shrink-0" title="Голосовий ввід не підтримується">
                   <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                   </svg>
@@ -360,10 +367,10 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
               <button
                 onClick={handleSubmit}
                 disabled={!canSubmit}
-                className={`flex-1 h-14 rounded-2xl text-[15px] font-bold transition-all ${
+                className={`flex-1 h-14 rounded-full text-[15px] font-bold transition-all shadow-sm ${
                   canSubmit
-                    ? "bg-indigo-500 text-white active:scale-95 hover:bg-indigo-600"
-                    : "bg-slate-100 text-slate-300 cursor-default"
+                    ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white active:scale-95 hover:from-indigo-600 hover:to-violet-600 shadow-indigo-200/60"
+                    : "bg-slate-200 text-slate-400 cursor-default"
                 }`}
               >
                 {isRecording ? "Стоп і розібрати" : "Розібрати з AI"}

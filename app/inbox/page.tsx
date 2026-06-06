@@ -53,41 +53,43 @@ export default function InboxPage() {
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors touch-manipulation"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/70 shadow-sm hover:bg-white transition-colors touch-manipulation"
           >
             <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </Link>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Review</p>
-            <h1 className="text-2xl font-bold text-slate-800">Inbox</h1>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-white/70 text-xs font-semibold text-slate-500 shadow-sm mb-1.5">
+              Перегляд
+            </span>
+            <h1 className="text-[28px] font-bold text-slate-800 leading-tight">Вхідні</h1>
           </div>
         </div>
         {tasks.length > 0 && (
-          <p className="text-sm text-slate-400 mt-3 ml-13">
-            {tasks.length} task{tasks.length !== 1 ? "s" : ""} to review
+          <p className="text-sm text-slate-500 mt-3 ml-14 font-medium">
+            {tasks.length} задач{tasks.length === 1 ? "а" : tasks.length < 5 ? "и" : ""} для перегляду
           </p>
         )}
       </header>
 
       <main className="flex-1 px-5 pb-8">
         {tasks.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-            <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center">
-              <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
+            <div className="w-24 h-24 rounded-full bg-white/70 shadow-sm flex items-center justify-center">
+              <svg className="w-11 h-11 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-800">Nothing to review</h2>
-              <p className="text-slate-400 text-sm mt-1">Capture a brain-dump and AI will fill this up.</p>
+              <h2 className="text-xl font-bold text-slate-800">Нічого не знайдено</h2>
+              <p className="text-slate-400 text-sm mt-1.5 leading-relaxed">Зроби brain-dump — AI заповнить вхідні.</p>
             </div>
             <Link
               href="/"
-              className="mt-2 px-6 py-3 bg-indigo-500 text-white font-bold rounded-2xl text-sm hover:bg-indigo-600 transition-colors"
+              className="mt-2 px-7 py-3.5 bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-bold rounded-full text-sm hover:from-indigo-600 hover:to-violet-600 transition-all shadow-md shadow-indigo-200/50"
             >
-              Go to Today
+              На сьогодні
             </Link>
           </div>
         )}
