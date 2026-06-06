@@ -13,7 +13,6 @@ type State = "idle" | "recording" | "parsing" | "error";
 const LANGS = [
   { code: "uk-UA", label: "УКР", flag: "🇺🇦" },
   { code: "en-US", label: "ENG", flag: "🇬🇧" },
-  { code: "ru-RU", label: "РУС", flag: "🇷🇺" },
 ] as const;
 type LangCode = (typeof LANGS)[number]["code"];
 
