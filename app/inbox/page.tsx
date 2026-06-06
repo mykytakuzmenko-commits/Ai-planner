@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import TaskCard, { type Task } from "@/components/TaskCard";
+import TaskCard from "@/components/TaskCard";
 import UndoToast from "@/components/UndoToast";
-
-type LoadState = "loading" | "error" | "success";
+import { getInboxTasks, addToToday, deleteTask, restoreTask, type Task } from "@/lib/storage";
 
 interface UndoItem {
   task: Task;
@@ -14,75 +13,42 @@ interface UndoItem {
 
 export default function InboxPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [loadState, setLoadState] = useState<LoadState>("loading");
   const [undoItem, setUndoItem] = useState<UndoItem | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  const loadTasks = useCallback(async () => {
-    try {
-      const res = await fetch("/api/inbox");
-      if (!res.ok) throw new Error("Failed to load");
-      const data = await res.json();
-      setTasks(data.tasks || []);
-      setLoadState("success");
-    } catch {
-      setLoadState("error");
-    }
+  const refresh = useCallback(() => {
+    setTasks(getInboxTasks());
   }, []);
 
   useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+    setMounted(true);
+    refresh();
+  }, [refresh]);
 
-  const handleAddToToday = async (id: string) => {
-    const task = tasks.find((t) => t.id === id);
-    if (!task) return;
-
-    // Optimistic remove from inbox
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-
-    try {
-      const res = await fetch(`/api/tasks/${id}/add-to-today`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed");
-    } catch {
-      loadTasks();
-    }
+  const handleAddToToday = (id: string) => {
+    addToToday(id);
+    refresh();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
-
-    // Optimistic remove
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+    deleteTask(id);
     setUndoItem({ task, message: "Task deleted" });
-
-    try {
-      await fetch(`/api/tasks/${id}`, { method: "DELETE" });
-    } catch {
-      loadTasks();
-    }
+    refresh();
   };
 
-  const handleUndo = async () => {
+  const handleUndo = () => {
     if (!undoItem) return;
-    const { task } = undoItem;
+    restoreTask(undoItem.task.id, "inbox");
     setUndoItem(null);
-
-    try {
-      await fetch(`/api/tasks/${task.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "inbox" }),
-      });
-      setTasks((prev) => [task, ...prev]);
-    } catch {
-      loadTasks();
-    }
+    refresh();
   };
+
+  if (!mounted) return null;
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Header */}
       <header className="px-5 pt-12 pb-4">
         <div className="flex items-center gap-4">
           <Link
@@ -98,34 +64,15 @@ export default function InboxPage() {
             <h1 className="text-2xl font-bold text-slate-800">Inbox</h1>
           </div>
         </div>
-
         {tasks.length > 0 && (
-          <p className="text-sm text-slate-400 mt-3">
+          <p className="text-sm text-slate-400 mt-3 ml-13">
             {tasks.length} task{tasks.length !== 1 ? "s" : ""} to review
           </p>
         )}
       </header>
 
-      {/* Content */}
       <main className="flex-1 px-5 pb-8">
-        {loadState === "loading" && (
-          <div className="flex flex-col gap-3 mt-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 bg-slate-100 rounded-2xl animate-pulse-soft" />
-            ))}
-          </div>
-        )}
-
-        {loadState === "error" && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <p className="text-slate-500 text-center">Failed to load inbox</p>
-            <button onClick={loadTasks} className="text-indigo-500 font-semibold text-sm">
-              Retry
-            </button>
-          </div>
-        )}
-
-        {loadState === "success" && tasks.length === 0 && (
+        {tasks.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
             <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center">
               <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,7 +92,7 @@ export default function InboxPage() {
           </div>
         )}
 
-        {loadState === "success" && tasks.length > 0 && (
+        {tasks.length > 0 && (
           <div className="flex flex-col gap-3 mt-4">
             {tasks.map((task) => (
               <TaskCard
@@ -160,7 +107,6 @@ export default function InboxPage() {
         )}
       </main>
 
-      {/* Undo toast */}
       {undoItem && (
         <UndoToast
           message={undoItem.message}
