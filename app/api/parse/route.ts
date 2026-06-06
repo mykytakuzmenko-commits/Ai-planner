@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 export async function POST(request: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error("ANTHROPIC_API_KEY is not set");
+  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API;
+  if (!apiKey) {
+    console.error("No Anthropic API key found");
     return NextResponse.json({ error: "API key not configured" }, { status: 500 });
   }
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const anthropic = new Anthropic({ apiKey });
 
   let body;
   try {
