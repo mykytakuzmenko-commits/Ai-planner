@@ -16,19 +16,17 @@ const LANGS = [
 ] as const;
 type LangCode = (typeof LANGS)[number]["code"];
 
-// Waveform bars component
-function Waveform({ active }: { active: boolean }) {
+function Waveform() {
   return (
     <div className="flex items-center gap-[3px] h-5">
       {[0.4, 0.7, 1, 0.6, 0.9, 0.5, 0.8].map((h, i) => (
         <div
           key={i}
           style={{
-            height: active ? `${h * 100}%` : "30%",
-            transitionDelay: `${i * 60}ms`,
-            animation: active ? `wave 0.8s ease-in-out ${i * 0.1}s infinite alternate` : "none",
+            height: `${h * 100}%`,
+            animation: `wave 0.8s ease-in-out ${i * 0.1}s infinite alternate`,
           }}
-          className="w-[3px] bg-current rounded-full transition-all duration-200"
+          className="w-[3px] bg-white rounded-full"
         />
       ))}
     </div>
@@ -46,8 +44,10 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
-  const finalRef = useRef(""); // stable ref for closure
   const isRecordingRef = useRef(false);
+  // Two refs to track text without stale closure issues
+  const finalRef = useRef("");   // confirmed words
+  const interimRef = useRef(""); // current unconfirmed words
 
   const SOFT_LIMIT = 1000;
   const HARD_LIMIT = 4000;
@@ -55,24 +55,25 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
-    if (!w.SpeechRecognition && !w.webkitSpeechRecognition) {
-      setMicSupported(false);
-    }
+    if (!w.SpeechRecognition && !w.webkitSpeechRecognition) setMicSupported(false);
     setTimeout(() => textareaRef.current?.focus(), 150);
   }, []);
 
-  // Auto-scroll textarea to bottom when text changes
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [text, interimText]);
-
-  const stopRecording = useCallback(() => {
+  // Commit interim + stop recognition, return full text
+  const flushAndStop = useCallback(() => {
     isRecordingRef.current = false;
+    // Commit any interim words that haven't been finalized yet
+    if (interimRef.current.trim()) {
+      finalRef.current = (finalRef.current + " " + interimRef.current).trim() + " ";
+      interimRef.current = "";
+    }
     recognitionRef.current?.stop();
     recognitionRef.current = null;
+    const committed = finalRef.current.trim();
+    setText(committed);
     setInterimText("");
     setState("idle");
+    return committed;
   }, []);
 
   const startRecording = useCallback(() => {
@@ -82,12 +83,16 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
     if (!SR) return;
 
     setError(null);
+    isRecordingRef.current = true;
+    finalRef.current = text; // carry over anything already typed
+    interimRef.current = "";
+    setState("recording");
 
     const createSession = () => {
       if (!isRecordingRef.current) return;
 
       const recognition = new SR();
-      recognition.continuous = false;
+      recognition.continuous = false;   // most reliable across browsers
       recognition.interimResults = true;
       recognition.lang = lang;
       recognition.maxAlternatives = 1;
@@ -99,10 +104,12 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalRef.current += transcript + " ";
+            interimRef.current = "";
             setText(finalRef.current);
             setInterimText("");
           } else {
             interim = transcript;
+            interimRef.current = interim; // always keep ref in sync
             setInterimText(interim);
           }
         }
@@ -113,50 +120,44 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
         if (e.error === "not-allowed") {
           isRecordingRef.current = false;
           setState("idle");
-          setError("Microphone access denied. Please allow mic in browser settings.");
-          return;
+          setError("Мікрофон заблоковано. Дозволь доступ у налаштуваннях браузера.");
         }
-        // Other errors (network, aborted) — restart silently
+        // aborted / network — will restart via onend
       };
 
       recognition.onend = () => {
-        // Auto-restart while still in recording mode
         if (isRecordingRef.current) {
-          setTimeout(createSession, 100);
-        } else {
-          setText(finalRef.current.trim());
-          setInterimText("");
+          // Session ended naturally (pause detected) — restart immediately
+          setTimeout(createSession, 80);
         }
       };
 
       recognitionRef.current = recognition;
-      try {
-        recognition.start();
-      } catch {
-        // Already started — ignore
-      }
+      try { recognition.start(); } catch { /* already started */ }
     };
 
-    isRecordingRef.current = true;
-    finalRef.current = text; // carry over any already-typed text
-    setState("recording");
     createSession();
-  }, [text]);
+  }, [text, lang]);
 
   const handleMicClick = () => {
-    if (state === "recording") {
-      stopRecording();
-    } else {
-      startRecording();
-    }
+    if (state === "recording") flushAndStop();
+    else startRecording();
   };
 
-  const handleSubmit = async () => {
-    if (state === "recording") stopRecording();
-    const finalText = (finalRef.current || text).trim();
-    if (!finalText || state === "parsing") return;
+  const handleSubmit = useCallback(async () => {
+    if (state === "parsing") return;
+
+    // Commit any in-flight interim text, then get the full string
+    let finalText: string;
+    if (state === "recording") {
+      finalText = flushAndStop();
+    } else {
+      finalText = finalRef.current.trim() || text.trim();
+    }
+
+    if (!finalText) return;
     if (finalText.length > HARD_LIMIT) {
-      setError(`Text is too long. Max ${HARD_LIMIT} characters.`);
+      setError(`Текст задовгий. Максимум ${HARD_LIMIT} символів.`);
       return;
     }
 
@@ -186,7 +187,7 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
       }>;
 
       if (!parsed || parsed.length === 0) {
-        setError("Couldn't find any tasks. Try being more specific.");
+        setError("Не знайшов задач. Спробуй описати детальніше.");
         setState("error");
         return;
       }
@@ -208,28 +209,28 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
       onClose();
     } catch (err) {
       setState("error");
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(err instanceof Error ? err.message : "Щось пішло не так. Спробуй ще раз.");
     }
-  };
+  }, [state, text, flushAndStop, onTasksCreated, onClose]);
 
   const isRecording = state === "recording";
   const isParsing = state === "parsing";
-  const displayText = text + (interimText ? interimText : "");
+  const displayText = text + interimText;
   const canSubmit = displayText.trim().length > 0 && !isParsing;
 
   return (
     <>
-      {/* Waveform keyframes injected inline */}
       <style>{`
-        @keyframes wave {
-          from { transform: scaleY(0.4); }
-          to   { transform: scaleY(1); }
-        }
+        @keyframes wave { from { transform:scaleY(0.3); } to { transform:scaleY(1); } }
+        @keyframes slideUp { from { opacity:0; transform:translateY(100%); } to { opacity:1; transform:translateY(0); } }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        @keyframes micPulse { 0%{box-shadow:0 0 0 0 rgba(239,68,68,.5);} 70%{box-shadow:0 0 0 14px rgba(239,68,68,0);} 100%{box-shadow:0 0 0 0 rgba(239,68,68,0);} }
       `}</style>
 
-      <div className="fixed inset-0 z-50 flex flex-col bg-white" style={{ animation: "slideUp 0.28s cubic-bezier(0.16,1,0.3,1) both" }}>
-        <style>{`@keyframes slideUp { from { opacity:0; transform:translateY(100%); } to { opacity:1; transform:translateY(0); } }`}</style>
-
+      <div
+        className="fixed inset-0 z-50 flex flex-col bg-white"
+        style={{ animation: "slideUp 0.28s cubic-bezier(0.16,1,0.3,1) both" }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-12 pb-4 border-b border-slate-100">
           <h2 className="text-lg font-bold text-slate-800">Brain dump</h2>
@@ -243,26 +244,25 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
           </button>
         </div>
 
-        {/* Parsing state */}
+        {/* Parsing */}
         {isParsing && (
           <div className="flex-1 flex flex-col items-center justify-center gap-5 px-8">
             <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center">
-              <svg className="w-8 h-8 text-indigo-500" style={{ animation: "spin 1s linear infinite" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              <svg style={{ animation: "spin 1s linear infinite" }} className="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </div>
             <div className="text-center">
-              <p className="text-slate-800 font-semibold text-lg">AI is parsing your tasks…</p>
-              <p className="text-slate-400 text-sm mt-1">Usually a few seconds</p>
+              <p className="text-slate-800 font-semibold text-lg">AI розбирає твої задачі…</p>
+              <p className="text-slate-400 text-sm mt-1">Зазвичай кілька секунд</p>
             </div>
           </div>
         )}
 
-        {/* Input area */}
+        {/* Input */}
         {!isParsing && (
           <div className="flex-1 flex flex-col px-5 pt-4 pb-2 gap-3 overflow-hidden">
-            <div className="flex-1 relative">
+            <div className="flex-1 relative overflow-hidden">
               <textarea
                 ref={textareaRef}
                 value={displayText}
@@ -270,25 +270,30 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
                   if (!isRecording) {
                     setText(e.target.value);
                     finalRef.current = e.target.value;
+                    interimRef.current = "";
                   }
                 }}
                 readOnly={isRecording}
-                placeholder="Need to message Anna, finish the deck, gym at 18:00, call at 15:00, maybe read that article later…"
-                className="w-full h-full resize-none text-[16px] leading-relaxed text-slate-800 placeholder-slate-300 focus:outline-none"
+                placeholder="Написати Ані, закінчити презентацію, зал о 18:00, дзвінок о 15:00, може прочитати статтю пізніше…"
+                className="w-full h-full resize-none text-[16px] leading-relaxed focus:outline-none"
+                style={{ color: isRecording && interimText ? "#94a3b8" : "#1e293b" }}
               />
-              {/* Interim text shimmer overlay */}
-              {isRecording && interimText && (
-                <div className="absolute bottom-0 left-0 right-0 text-[16px] leading-relaxed pointer-events-none">
-                  <span className="invisible">{text}</span>
-                  <span className="text-slate-400 italic">{interimText}</span>
-                </div>
-              )}
             </div>
 
             {displayText.length > SOFT_LIMIT && (
               <p className={`text-xs text-right ${displayText.length > HARD_LIMIT * 0.9 ? "text-red-400" : "text-amber-400"}`}>
                 {displayText.length} / {HARD_LIMIT}
               </p>
+            )}
+
+            {/* Recording hint */}
+            {isRecording && (
+              <div className="flex items-center gap-2 bg-red-50 rounded-2xl px-4 py-2.5">
+                <div className="w-2 h-2 rounded-full bg-red-500" style={{ animation: "micPulse 1.4s ease-out infinite" }} />
+                <span className="text-sm text-red-600 font-medium">
+                  Говори — {LANGS.find(l => l.code === lang)?.flag} розпізнаю…
+                </span>
+              </div>
             )}
 
             {state === "error" && error && (
@@ -322,55 +327,48 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
               ))}
             </div>
 
-          <div className="flex items-center gap-3">
-
-            {/* Mic button */}
-            {micSupported ? (
-              <button
-                onClick={handleMicClick}
-                style={isRecording ? {
-                  background: "#ef4444",
-                  boxShadow: "0 0 0 0 rgba(239,68,68,0.4)",
-                  animation: "micPulse 1.4s ease-out infinite",
-                } : {}}
-                className={`relative w-14 h-14 rounded-full flex flex-col items-center justify-center gap-1 transition-all flex-shrink-0 ${
-                  isRecording ? "text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95"
-                }`}
-              >
-                <style>{`@keyframes micPulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 70% { box-shadow: 0 0 0 12px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }`}</style>
-
-                {isRecording ? (
-                  <>
-                    <Waveform active={true} />
-                    <span className="text-[9px] font-bold tracking-wide uppercase opacity-80">Stop</span>
-                  </>
-                ) : (
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center gap-3">
+              {/* Mic button */}
+              {micSupported ? (
+                <button
+                  onClick={handleMicClick}
+                  style={isRecording ? { background: "#ef4444", animation: "micPulse 1.4s ease-out infinite" } : {}}
+                  className={`w-14 h-14 rounded-full flex flex-col items-center justify-center gap-1 transition-all flex-shrink-0 ${
+                    isRecording ? "text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95"
+                  }`}
+                >
+                  {isRecording ? (
+                    <>
+                      <Waveform />
+                      <span className="text-[9px] font-bold tracking-wide uppercase opacity-80">Стоп</span>
+                    </>
+                  ) : (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                  )}
+                </button>
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0" title="Голосовий ввід не підтримується">
+                  <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                   </svg>
-                )}
-              </button>
-            ) : (
-              <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-              </div>
-            )}
+                </div>
+              )}
 
-            {/* Submit */}
-            <button
-              onClick={handleSubmit}
-              disabled={!canSubmit}
-              className={`flex-1 h-14 rounded-2xl text-[15px] font-bold transition-all ${
-                canSubmit
-                  ? "bg-indigo-500 text-white active:scale-95 hover:bg-indigo-600"
-                  : "bg-slate-100 text-slate-300 cursor-default"
-              }`}
-            >
-              {isRecording ? "Stop & parse" : "Parse with AI"}
-            </button>
-          </div>
+              {/* Submit */}
+              <button
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                className={`flex-1 h-14 rounded-2xl text-[15px] font-bold transition-all ${
+                  canSubmit
+                    ? "bg-indigo-500 text-white active:scale-95 hover:bg-indigo-600"
+                    : "bg-slate-100 text-slate-300 cursor-default"
+                }`}
+              >
+                {isRecording ? "Стоп і розібрати" : "Розібрати з AI"}
+              </button>
+            </div>
           </div>
         )}
       </div>
