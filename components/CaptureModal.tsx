@@ -131,7 +131,7 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
     };
 
     createSession();
-  }, [text, lang]);
+  }, [text]);
 
   const handleMicClick = () => {
     if (state === "recording") flushAndStop();
@@ -292,7 +292,7 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
               <div className="flex items-center gap-2 bg-red-50 rounded-full px-4 py-2.5 shadow-sm">
                 <div className="w-2 h-2 rounded-full bg-red-500" style={{ animation: "micPulse 1.4s ease-out infinite" }} />
                 <span className="text-sm text-red-600 font-semibold">
-                  Говори — {LANGS.find(l => l.code === lang)?.flag} розпізнаю…
+                  Говори — {getLang() === "uk-UA" ? "🇺🇦" : "🇬🇧"} розпізнаю…
                 </span>
               </div>
             )}
