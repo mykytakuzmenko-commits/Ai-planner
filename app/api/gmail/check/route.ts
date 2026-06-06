@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API,
+  apiKey: process.env.ANTHROPIC_API || process.env.ANTHROPIC_API_KEY,
 });
 
 interface EmailMessage {
@@ -81,7 +81,7 @@ Return ONLY JSON (no markdown):
 {"tasks":[{"title":"...","priority":"must"|"nice","estimated_duration_minutes":number,"deadline_date":"YYYY-MM-DD"|null,"deadline_time":"HH:mm"|null}]}`;
 
   const response = await anthropic.messages.create({
-    model: "claude-3-haiku-20240307",
+    model: "claude-haiku-4-5",
     max_tokens: 512,
     messages: [{ role: "user", content: prompt }],
   });
@@ -159,7 +159,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ tasks: allTasks, processed_ids: processedIds });
   } catch (err) {
-    console.error("Gmail check error:", err);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Gmail check error:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
