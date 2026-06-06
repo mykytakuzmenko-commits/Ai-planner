@@ -6,6 +6,7 @@ import CaptureModal from "@/components/CaptureModal";
 import UndoToast from "@/components/UndoToast";
 import TimelineView from "@/components/TimelineView";
 import GmailConnect from "@/components/GmailConnect";
+import LangToggle from "@/components/LangToggle";
 import {
   getTodayTasks,
   getInboxCount,
@@ -143,6 +144,7 @@ export default function TodayPage() {
           </div>
 
           <div className="flex items-center gap-2 mt-1">
+            <LangToggle />
             <GmailConnect onTasksFound={refresh} />
             {inboxCount > 0 && (
               <Link

@@ -35,7 +35,7 @@ Current date: ${today} (timezone: ${timezone})
 
 Rules:
 - Split into atomic single-action tasks (one verb/outcome each)
-- title: short imperative phrase
+- title: short imperative phrase — SAME LANGUAGE AS INPUT (Ukrainian text → Ukrainian titles, English text → English titles)
 - priority "must": urgent/committed ("need to", "must", "don't forget", has time/deadline)
 - priority "nice": optional ("maybe", "later", "would be nice")
 - estimated_duration_minutes: always a number (message=5, call=20, meeting=60, gym=60, focused work=45)

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import LangToggle from "@/components/LangToggle";
 import TaskCard from "@/components/TaskCard";
 import UndoToast from "@/components/UndoToast";
 import { getInboxTasks, addToToday, deleteTask, restoreTask, type Task } from "@/lib/storage";
@@ -59,6 +60,9 @@ export default function InboxPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </Link>
+          <div className="ml-auto">
+            <LangToggle />
+          </div>
           <div>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-white/70 text-xs font-semibold text-slate-500 shadow-sm mb-1.5">
               Перегляд
