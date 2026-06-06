@@ -10,6 +10,13 @@ interface CaptureModalProps {
 
 type State = "idle" | "recording" | "parsing" | "error";
 
+const LANGS = [
+  { code: "uk-UA", label: "УКР", flag: "🇺🇦" },
+  { code: "en-US", label: "ENG", flag: "🇬🇧" },
+  { code: "ru-RU", label: "РУС", flag: "🇷🇺" },
+] as const;
+type LangCode = (typeof LANGS)[number]["code"];
+
 // Waveform bars component
 function Waveform({ active }: { active: boolean }) {
   return (
@@ -35,6 +42,7 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
   const [state, setState] = useState<State>("idle");
   const [error, setError] = useState<string | null>(null);
   const [micSupported, setMicSupported] = useState(true);
+  const [lang, setLang] = useState<LangCode>("uk-UA");
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,14 +84,11 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
 
     setError(null);
 
-    // Detect browser language for better recognition
-    const lang = navigator.language || "uk-UA";
-
     const createSession = () => {
       if (!isRecordingRef.current) return;
 
       const recognition = new SR();
-      recognition.continuous = false;      // more reliable on mobile
+      recognition.continuous = false;
       recognition.interimResults = true;
       recognition.lang = lang;
       recognition.maxAlternatives = 1;
@@ -297,7 +302,28 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
 
         {/* Bottom bar */}
         {!isParsing && (
-          <div className="px-5 pb-10 pt-3 border-t border-slate-100 flex items-center gap-3">
+          <div className="px-5 pb-10 pt-3 border-t border-slate-100 flex flex-col gap-3">
+
+            {/* Language selector */}
+            <div className="flex gap-2">
+              {LANGS.map((l) => (
+                <button
+                  key={l.code}
+                  onClick={() => { if (!isRecording) setLang(l.code); }}
+                  disabled={isRecording}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all ${
+                    lang === l.code
+                      ? "bg-indigo-500 text-white"
+                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  } ${isRecording ? "opacity-40 cursor-default" : ""}`}
+                >
+                  <span>{l.flag}</span>
+                  <span>{l.label}</span>
+                </button>
+              ))}
+            </div>
+
+          <div className="flex items-center gap-3">
 
             {/* Mic button */}
             {micSupported ? (
@@ -345,6 +371,7 @@ export default function CaptureModal({ onClose, onTasksCreated }: CaptureModalPr
             >
               {isRecording ? "Stop & parse" : "Parse with AI"}
             </button>
+          </div>
           </div>
         )}
       </div>
