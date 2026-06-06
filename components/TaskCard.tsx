@@ -106,7 +106,22 @@ export default function TaskCard({
                 ⚠ Не зрозуміло
               </span>
             )}
+
+            {task.source === "mail" && (
+              <span className="flex items-center gap-1 text-[11px] font-bold text-sky-600 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-full">
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                </svg>
+                З пошти
+              </span>
+            )}
           </div>
+
+          {task.source === "mail" && task.sourceEmailSubject && (
+            <p className="text-[11px] text-slate-400 mt-1.5 truncate">
+              📧 {task.sourceEmailSubject}
+            </p>
+          )}
         </div>
       </div>
 

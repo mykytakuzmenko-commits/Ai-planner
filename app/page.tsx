@@ -143,7 +143,7 @@ export default function TodayPage() {
           </div>
 
           <div className="flex items-center gap-2 mt-1">
-            <GmailConnect />
+            <GmailConnect onTasksFound={refresh} />
             {inboxCount > 0 && (
               <Link
                 href="/inbox"
